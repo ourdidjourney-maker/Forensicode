@@ -205,26 +205,30 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
 .vt-btn:hover{border-color:var(--signal);color:var(--signal)}
 .vt-btn.active{background:rgba(0,229,204,0.1);border-color:var(--signal);color:var(--signal)}
 /* CONNECTIONS view modes */
-#pane-connections.mode-plain .chc-where{display:none}
-#pane-connections.mode-plain .chc-raw{display:none}
-#pane-connections.mode-raw .chc-headline,
-#pane-connections.mode-raw .chc-what,
-#pane-connections.mode-raw .chc-weblink,
-#pane-connections.mode-raw .chc-where{display:none}
-#pane-connections.mode-raw .chc-raw{display:block!important}
-#pane-connections.mode-raw .chc-headline,
-#pane-connections.mode-raw .chc-what,
-#pane-connections.mode-raw .chc-weblink{display:none}
-#pane-connections.mode-raw .chc-where{display:block;font-size:10px;font-family:var(--mono);color:var(--text)}
+/* CONNECTIONS — hide everything by default, each mode reveals its parts */
+.chc-headline,.chc-what,.chc-where,.chc-weblink,.chc-raw{display:none}
+#pane-connections.mode-both .chc-headline,
+#pane-connections.mode-both .chc-what,
+#pane-connections.mode-both .chc-where,
+#pane-connections.mode-both .chc-weblink,
+#pane-connections.mode-both .chc-raw{display:block}
+#pane-connections.mode-plain .chc-headline,
+#pane-connections.mode-plain .chc-what,
+#pane-connections.mode-plain .chc-where,
+#pane-connections.mode-plain .chc-weblink{display:block}
+#pane-connections.mode-raw .chc-raw{display:block}
 /* BEHAVIOR view modes */
-#pane-behavior.mode-plain .bhc-detail,
-#pane-behavior.mode-plain .bhc-toggle{display:none}
-#pane-behavior.mode-plain .bhc-what{display:block}
-#pane-behavior.mode-raw .bhc-what,
-#pane-behavior.mode-raw .bhc-toggle{display:none}
+/* BEHAVIOR — hide everything by default, each mode reveals its parts */
+.bhc-headline,.bhc-what,.bhc-detail,.bhc-toggle,.bhc-warn{display:none}
+#pane-behavior.mode-both .bhc-headline,
+#pane-behavior.mode-both .bhc-what,
+#pane-behavior.mode-both .bhc-detail,
+#pane-behavior.mode-both .bhc-warn{display:block}
+#pane-behavior.mode-plain .bhc-headline,
+#pane-behavior.mode-plain .bhc-what,
+#pane-behavior.mode-plain .bhc-warn{display:block}
+#pane-behavior.mode-raw .bhc-headline,
 #pane-behavior.mode-raw .bhc-detail{display:block}
-#pane-behavior.mode-both .bhc-detail{display:block}
-#pane-behavior.mode-both .bhc-toggle{display:none}
 /* HUMAN CONNECTIONS */
 .conn-human-card{padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
 .conn-human-card:hover{background:rgba(255,170,0,0.06)}
@@ -330,12 +334,12 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
             <div class="q-title" style="color:var(--amber)">⬡ CONNECTIONS</div>
             <div class="q-count" style="background:rgba(255,170,0,0.1);color:var(--amber)" id="count-conn">0</div>
             <div class="view-toggle">
-              <button class="vt-btn active" id="conn-btn-both" onclick="setPaneMode('connections','both')">BOTH</button>
+              <button class="vt-btn" id="conn-btn-both" onclick="setPaneMode('connections','both')">BOTH</button>
               <button class="vt-btn" id="conn-btn-plain" onclick="setPaneMode('connections','plain')">PLAIN</button>
               <button class="vt-btn" id="conn-btn-raw" onclick="setPaneMode('connections','raw')">RAW</button>
             </div>
           </div>
-          <div class="q-body mode-both" id="pane-connections">
+          <div class="q-body mode-none" id="pane-connections">
             <div class="empty-pane"><div class="empty-icon">⬡</div>Wiring map appears here</div>
           </div>
         </div>
@@ -347,12 +351,12 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
             <div class="q-title" style="color:var(--alert)">⚡ BEHAVIOR</div>
             <div class="q-count" style="background:rgba(255,77,109,0.1);color:var(--alert)" id="count-beh">0</div>
             <div class="view-toggle">
-              <button class="vt-btn active" id="beh-btn-both" onclick="setPaneMode('behavior','both')">BOTH</button>
+              <button class="vt-btn" id="beh-btn-both" onclick="setPaneMode('behavior','both')">BOTH</button>
               <button class="vt-btn" id="beh-btn-plain" onclick="setPaneMode('behavior','plain')">PLAIN</button>
               <button class="vt-btn" id="beh-btn-raw" onclick="setPaneMode('behavior','raw')">RAW</button>
             </div>
           </div>
-          <div class="q-body mode-both" id="pane-behavior">
+          <div class="q-body mode-none" id="pane-behavior">
             <div class="empty-pane"><div class="empty-icon">⚡</div>Scripts &amp; events appear here</div>
           </div>
         </div>
@@ -2687,12 +2691,17 @@ function highlightSourceLine(lineNum){
 function setPaneMode(pane, mode){
   var body = document.getElementById('pane-'+pane);
   if(!body) return;
-  body.classList.remove('mode-both','mode-plain','mode-raw');
-  body.classList.add('mode-'+mode);
-  // Update button states
+  // Check the BUTTON to determine current active state (not pane class which can drift)
+  var btn = document.getElementById(pane+'-btn-'+mode);
+  var isActive = btn && btn.classList.contains('active');
+  var newMode = isActive ? 'none' : mode;
+  // Update pane class
+  body.classList.remove('mode-both','mode-plain','mode-raw','mode-none');
+  body.classList.add('mode-'+newMode);
+  // Update all button states — only the active one lights up
   ['both','plain','raw'].forEach(function(m){
-    var btn = document.getElementById(pane+'-btn-'+m);
-    if(btn) btn.className = 'vt-btn' + (m===mode?' active':'');
+    var b = document.getElementById(pane+'-btn-'+m);
+    if(b) b.className = 'vt-btn' + (m===newMode?' active':'');
   });
 }
 
@@ -4003,7 +4012,11 @@ function buildMiniSourceFromUrls(urls, domain){
   return html;
 }
 
-document.addEventListener('DOMContentLoaded', function(){ initResize(); });
+document.addEventListener('DOMContentLoaded', function(){
+  initResize();
+  setPaneMode('connections','both');
+  setPaneMode('behavior','both');
+});
 </script>
 </body>
 </html>
