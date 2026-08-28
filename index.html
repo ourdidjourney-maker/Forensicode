@@ -198,6 +198,19 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
 .cv-item:last-child{border-bottom:none}
 .cv-tag{color:var(--signal);font-family:var(--mono);font-size:10px}
 .cv-warn{color:var(--alert);font-size:10px;font-family:var(--sans)}
+.exec-log-entry{padding:3px 10px;border-bottom:1px solid rgba(30,30,50,0.4);cursor:pointer;transition:background .1s}
+.exec-log-entry:hover{background:rgba(255,77,109,0.07)}
+.exec-log-entry.selected{background:rgba(255,77,109,0.12);border-left:2px solid var(--alert)}
+.exec-type{font-size:9px;padding:1px 4px;border-radius:2px;margin-right:4px;font-weight:700;letter-spacing:0.5px}
+.et-event{background:rgba(255,77,109,0.15);color:#ff4d6d}
+.et-call{background:rgba(0,229,204,0.12);color:#00e5cc}
+.et-dom{background:rgba(123,97,255,0.15);color:#7b61ff}
+.et-state{background:rgba(255,170,0,0.15);color:#ffaa00}
+.et-listen{background:rgba(136,153,255,0.15);color:#8899ff}
+.exec-name{color:var(--text-bright);font-size:10px}
+.exec-detail-row{display:flex;gap:6px;margin:4px 0}
+.exec-detail-label{color:var(--text-dim);min-width:60px;font-size:10px}
+.exec-detail-val{color:var(--text);font-size:10px;word-break:break-all}
 
 /* PANE VIEW MODE TOGGLE */
 .view-toggle{display:flex;gap:2px;margin-left:auto}
@@ -263,6 +276,7 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
   <div style="font-size:10px;color:var(--text-dim)">CLICK ANYTHING IN PREVIEW → INSPECT IT</div>
   <div class="header-sep"></div>
   <button class="scan-btn" id="btn-netmap" onclick="openNetMap()" style="border-color:var(--purple-dim);color:var(--purple)" disabled>⬡ NETWORK MAP</button>
+  <button class="scan-btn" id="btn-exec" onclick="openExecTrace()" style="border-color:var(--alert-dim);color:var(--alert)" disabled>⚡ EXEC TRACE</button>
 </div>
 
 <div id="body">
@@ -417,6 +431,55 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
 </div>
 </div>
 <div class="eng-tooltip" id="eng-tooltip"></div>
+
+<div id="exec-pane" style="position:fixed;top:42px;left:0;right:0;bottom:28px;background:rgba(3,3,10,0.99);z-index:502;display:none;flex-direction:column;font-family:var(--mono)">
+  <div id="exec-header" style="display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--panel2);border-bottom:1px solid var(--border2);flex-shrink:0">
+    <div style="font-size:11px;font-weight:700;color:var(--alert);letter-spacing:2px">⚡ EXEC TRACE — LIVE EXECUTION VISUALIZER</div>
+    <div style="display:flex;gap:4px">
+      <button id="exec-btn-run" class="vt-btn active" onclick="execRun()" style="border-color:var(--alert-dim);color:var(--alert)">▶ RUN</button>
+      <button id="exec-btn-pause" class="vt-btn" onclick="execPause()">⏸ PAUSE</button>
+      <button id="exec-btn-clear" class="vt-btn" onclick="execClear()">↺ CLEAR</button>
+    </div>
+    <div style="display:flex;gap:8px;font-size:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:#ff4d6d"></div><span style="color:var(--text-dim)">User Event</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:#00e5cc"></div><span style="color:var(--text-dim)">Function Call</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:#7b61ff"></div><span style="color:var(--text-dim)">DOM Write</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:#ffaa00"></div><span style="color:var(--text-dim)">State Change</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:#8899ff"></div><span style="color:var(--text-dim)">Listener Fire</span></div>
+    </div>
+    <div id="exec-stats" style="font-size:10px;color:var(--text-dim);margin-left:auto">EVENTS: <span id="exec-event-count" style="color:var(--alert)">0</span> · CALLS: <span id="exec-call-count" style="color:var(--signal)">0</span></div>
+    <button onclick="closeExecTrace()" style="padding:4px 12px;background:transparent;border:1px solid var(--alert-dim);color:var(--alert);font-family:var(--mono);font-size:11px;cursor:pointer">✕ CLOSE</button>
+  </div>
+  <div style="display:flex;flex:1;overflow:hidden">
+    <div style="width:280px;min-width:180px;flex-shrink:0;display:flex;flex-direction:column;border-right:1px solid var(--border2)">
+      <div style="padding:5px 10px;background:var(--panel2);border-bottom:1px solid var(--border);font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text-dim)">LIVE EVENT FEED</div>
+      <div id="exec-log" style="flex:1;overflow-y:auto;font-size:10px;line-height:1.6;padding:4px 0"></div>
+    </div>
+    <div style="flex:1;position:relative;overflow:hidden">
+      <canvas id="exec-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;cursor:crosshair"></canvas>
+      <div id="exec-empty" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--border2);pointer-events:none">
+        <div style="font-size:32px;margin-bottom:8px;opacity:0.3">⚡</div>
+        <div style="font-size:11px;letter-spacing:1px">CLICK ▶ RUN THEN INTERACT WITH THE PREVIEW</div>
+        <div style="font-size:10px;color:var(--border2);margin-top:4px;opacity:0.6">Execution flow renders here in real time</div>
+      </div>
+    </div>
+    <div style="width:240px;min-width:160px;flex-shrink:0;display:flex;flex-direction:column;border-left:1px solid var(--border2)">
+      <div style="padding:5px 10px;background:var(--panel2);border-bottom:1px solid var(--border);font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text-dim)">SELECTED NODE</div>
+      <div id="exec-detail" style="flex:1;overflow-y:auto;padding:10px;font-size:10px;color:var(--text-dim)">
+        <div style="text-align:center;padding:20px 0;opacity:0.4">Click a node in the flow to inspect it</div>
+      </div>
+    </div>
+  </div>
+  <div id="exec-preview-wrap" style="height:200px;flex-shrink:0;border-top:1px solid var(--border2);display:flex;flex-direction:column;min-height:80px">
+    <div id="exec-preview-drag" style="height:6px;background:var(--border2);cursor:row-resize;flex-shrink:0" onmousedown="execPreviewDragStart(event)"></div>
+    <div style="padding:4px 10px;background:var(--panel2);border-bottom:1px solid var(--border);font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text-dim);display:flex;align-items:center;gap:8px;flex-shrink:0">
+      INSTRUMENTED PREVIEW — INTERACT WITH THIS
+      <span style="color:var(--alert);font-size:9px">← your clicks and actions are traced above</span>
+    </div>
+    <iframe id="exec-frame" style="flex:1;border:none;background:#fff" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+  </div>
+</div>
+
 <script>
 var parsedDoc=null,allElements=[],selectedEl=null,globalConnMap={},clickModeOn=false,elToIdxMap=new WeakMap();
 
@@ -470,6 +533,7 @@ function runScan(){
       document.getElementById('hstat').innerHTML='ELEMENTS: <span>'+ec+'</span>';
       setStatus('SCAN COMPLETE — '+ec+' ELEMENTS — CLICK ANYTHING IN PREVIEW TO INSPECT','live');
       var nb=document.getElementById('btn-netmap');if(nb)nb.removeAttribute('disabled');
+      var eb=document.getElementById('btn-exec');if(eb)eb.removeAttribute('disabled');
       _sourceLines=[];buildSourceViewer();
     }catch(e){setStatus('SCAN ERROR: '+e.message,'warn');}
     btn.classList.remove('active');btn.textContent='▶ SCAN';
@@ -4017,6 +4081,330 @@ document.addEventListener('DOMContentLoaded', function(){
   setPaneMode('connections','both');
   setPaneMode('behavior','both');
 });
+
+// ═══════════════════════════════════════════════════════════
+// EXEC TRACE — LIVE EXECUTION VISUALIZER
+// ═══════════════════════════════════════════════════════════
+var execNodes=[],execEdges=[],execEvents=[];
+var execPaused=false,execRunning=false;
+var execCanvas,execCtx,execFrame;
+var execEventCount=0,execCallCount=0;
+var execSelectedNode=null;
+var execAnimRAF=null;
+var execScale=1,execOffX=0,execOffY=0;
+var execDragging=false,execDragStart=null;
+var EXEC_FADE_MS=3500;
+var EXEC_COLORS={'event':'#ff4d6d','call':'#00e5cc','dom':'#7b61ff','state':'#ffaa00','listen':'#8899ff'};
+
+function openExecTrace(){
+  var p=document.getElementById('exec-pane');
+  if(p)p.style.display='flex';
+  execCanvas=document.getElementById('exec-canvas');
+  execCtx=execCanvas?execCanvas.getContext('2d'):null;
+  execFrame=document.getElementById('exec-frame');
+  if(execCanvas){
+    resizeExecCanvas();
+    setTimeout(resizeExecCanvas,100);
+    window.addEventListener('resize',resizeExecCanvas);
+    execCanvas.addEventListener('mousedown',execCanvasMousedown);
+    execCanvas.addEventListener('mousemove',execCanvasMousemove);
+    execCanvas.addEventListener('mouseup',function(){execDragging=false;});
+    execCanvas.addEventListener('wheel',execCanvasWheel,{passive:false});
+    execCanvas.addEventListener('click',execCanvasClick);
+  }
+  window.addEventListener('message',onExecMessage);
+  if(!execAnimRAF)execAnimRAF=requestAnimationFrame(execDraw);
+}
+
+function closeExecTrace(){
+  var p=document.getElementById('exec-pane');
+  if(p)p.style.display='none';
+  execPaused=true;
+  if(execAnimRAF){cancelAnimationFrame(execAnimRAF);execAnimRAF=null;}
+  window.removeEventListener('message',onExecMessage);
+  window.removeEventListener('resize',resizeExecCanvas);
+}
+
+function resizeExecCanvas(){
+  if(!execCanvas)return;
+  requestAnimationFrame(function(){
+    var parent=execCanvas.parentElement;
+    if(!parent)return;
+    var w=parent.offsetWidth||parent.getBoundingClientRect().width;
+    var h=parent.offsetHeight||parent.getBoundingClientRect().height;
+    if(!w||!h)return;
+    var dpr=window.devicePixelRatio||1;
+    execCanvas.width=w*dpr;
+    execCanvas.height=h*dpr;
+    execCanvas.style.width=w+'px';
+    execCanvas.style.height=h+'px';
+  });
+}
+
+function execRun(){
+  execPaused=false;
+  execClear();
+  var html=document.getElementById('html-input').value;
+  if(!html.trim()){setStatus('No HTML to trace — paste source first','warn');return;}
+  var instrumented=instrumentHTML(html);
+  var blob=new Blob([instrumented],{type:'text/html'});
+  var url=URL.createObjectURL(blob);
+  if(execFrame){execFrame.src=url;execFrame.onload=function(){resizeExecCanvas();};}
+  document.getElementById('exec-empty').style.display='none';
+  execRunning=true;
+  if(!execAnimRAF)execAnimRAF=requestAnimationFrame(execDraw);
+}
+
+function execPause(){
+  execPaused=!execPaused;
+  var b=document.getElementById('exec-btn-pause');
+  if(b)b.textContent=execPaused?'▶ RESUME':'⏸ PAUSE';
+}
+
+function execClear(){
+  execNodes=[];execEdges=[];execEvents=[];
+  execEventCount=0;execCallCount=0;execSelectedNode=null;
+  document.getElementById('exec-event-count').textContent='0';
+  document.getElementById('exec-call-count').textContent='0';
+  document.getElementById('exec-log').innerHTML='';
+  document.getElementById('exec-detail').innerHTML='<div style="text-align:center;padding:20px 0;opacity:0.4">Click a node in the flow to inspect it</div>';
+}
+
+function instrumentHTML(html){
+  var bridge=[
+    '<script id="__exec_bridge">',
+    '(function(){',
+    'var __seq=0;',
+    'function __emit(type,name,detail,caller){',
+    '  var ev={type:type,name:name,detail:detail||"",caller:caller||"",seq:++__seq,ts:Date.now()};',
+    '  try{window.parent.postMessage({__execTrace:true,ev:ev},"*");}catch(e){}',
+    '}',
+    'var __origAEL=EventTarget.prototype.addEventListener;',
+    'EventTarget.prototype.addEventListener=function(type,fn,opts){',
+    '  var wrapped=function(e){',
+    '    __emit("event","on"+type,e.target?((e.target.tagName||"?")+""+(e.target.id?"#"+e.target.id:"")+" "+type):"",type);',
+    '    return fn.apply(this,arguments);',
+    '  };',
+    '  return __origAEL.call(this,type,wrapped,opts);',
+    '};',
+    'var __origAC=Node.prototype.appendChild;',
+    'Node.prototype.appendChild=function(node){',
+    '  __emit("dom","appendChild",node&&node.tagName?node.tagName:"node","dom");',
+    '  return __origAC.apply(this,arguments);',
+    '};',
+    'var __origCE=document.createElement.bind(document);',
+    'document.createElement=function(tag){',
+    '  __emit("dom","createElement",tag,"dom");',
+    '  return __origCE(tag);',
+    '};',
+    'var __origSA=Element.prototype.setAttribute;',
+    'Element.prototype.setAttribute=function(k,v){',
+    '  __emit("state","setAttribute",k+"="+String(v).slice(0,40),"dom");',
+    '  return __origSA.apply(this,arguments);',
+    '};',
+    'window.__emit=__emit;',
+    '})();',
+    '<\/script>'
+  ].join('');
+
+  var result=html.replace(/<script([^>]*)>([\s\S]*?)<\/script>/gi,function(match,attrs,code){
+    if(attrs.indexOf('__exec_bridge')>=0)return match;
+    if(attrs.indexOf('src=')>=0)return match;
+    try{var inst=instrumentFunctions(code);return '<script'+attrs+'>'+inst+'<\/script>';}
+    catch(e){return match;}
+  });
+
+  if(/<head[^>]*>/i.test(result)){result=result.replace(/<head([^>]*)>/i,'<head$1>'+bridge);}
+  else if(/<body[^>]*>/i.test(result)){result=result.replace(/<body([^>]*)>/i,'<body$1>'+bridge);}
+  else{result=bridge+result;}
+  return result;
+}
+
+function instrumentFunctions(code){
+  return code.replace(/\bfunction\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(([^)]*)\)\s*\{/g,
+    function(match,name,args){
+      return match+'\nif(window.__emit)window.__emit("call","'+name+'","args:('+args.replace(/"/g,"'")+')",' +'"fn");';
+    }
+  );
+}
+
+function onExecMessage(e){
+  if(!e.data||!e.data.__execTrace)return;
+  if(execPaused)return;
+  var ev=e.data.ev;
+  if(!ev)return;
+  processExecEvent(ev);
+}
+
+function processExecEvent(ev){
+  var now=Date.now();
+  var type=ev.type||'call';
+  var color=EXEC_COLORS[type]||'#00e5cc';
+  if(type==='call')execCallCount++;else execEventCount++;
+  document.getElementById('exec-event-count').textContent=execEventCount;
+  document.getElementById('exec-call-count').textContent=execCallCount;
+
+  var nodeKey=type+':'+ev.name;
+  var node=execNodes.find(function(n){return n.key===nodeKey;});
+  if(!node){
+    var angle=execNodes.length*0.618*Math.PI*2;
+    var radius=160+Math.floor(execNodes.length/5)*120;
+    node={key:nodeKey,name:ev.name,type:type,color:color,
+      x:Math.cos(angle)*radius,y:Math.sin(angle)*radius,
+      hits:0,lastHit:0,alpha:0,r:18};
+    execNodes.push(node);
+  }
+  node.hits++;node.lastHit=now;node.alpha=1;
+
+  if(ev.caller&&ev.caller!==ev.name){
+    var callerNode=execNodes.find(function(n){return n.name===ev.caller;});
+    if(callerNode&&callerNode!==node){
+      execEdges.push({from:callerNode,to:node,ts:now,alpha:1});
+    }
+  }
+  execEvents.push({ev:ev,node:node,ts:now});
+  if(execEvents.length>500)execEvents.shift();
+  addExecLogEntry(ev,node,color);
+}
+
+function addExecLogEntry(ev,node,color){
+  var log=document.getElementById('exec-log');if(!log)return;
+  var d=document.createElement('div');
+  d.className='exec-log-entry';
+  d.dataset.key=node.key;
+  d.innerHTML='<span class="exec-type et-'+ev.type+'">'+ev.type.toUpperCase()+'</span>'+
+    '<span class="exec-name">'+escHtml(ev.name.slice(0,32))+'</span>'+
+    (ev.detail?'<span style="color:var(--text-dim);font-size:9px;margin-left:4px">'+escHtml(ev.detail.slice(0,40))+'</span>':'');
+  d.addEventListener('click',function(){
+    execSelectedNode=node;
+    showExecNodeDetail(node,ev);
+    document.querySelectorAll('.exec-log-entry').forEach(function(e){e.classList.remove('selected');});
+    d.classList.add('selected');
+  });
+  log.insertBefore(d,log.firstChild);
+  while(log.children.length>200)log.removeChild(log.lastChild);
+}
+
+function showExecNodeDetail(node,ev){
+  var d=document.getElementById('exec-detail');if(!d)return;
+  d.innerHTML='<div style="margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)">'+
+    '<div style="font-size:12px;font-weight:700;color:'+node.color+';margin-bottom:2px">'+escHtml(node.name)+'</div>'+
+    '<div style="font-size:9px;color:var(--text-dim);letter-spacing:1px">'+node.type.toUpperCase()+'</div></div>'+
+    '<div class="exec-detail-row"><span class="exec-detail-label">Type</span><span class="exec-detail-val" style="color:'+node.color+'">'+node.type+'</span></div>'+
+    '<div class="exec-detail-row"><span class="exec-detail-label">Hit count</span><span class="exec-detail-val">'+node.hits+'</span></div>'+
+    '<div class="exec-detail-row"><span class="exec-detail-label">Caller</span><span class="exec-detail-val">'+escHtml(ev.caller||'—')+'</span></div>'+
+    '<div class="exec-detail-row"><span class="exec-detail-label">Detail</span><span class="exec-detail-val">'+escHtml(ev.detail||'—')+'</span></div>'+
+    '<div class="exec-detail-row"><span class="exec-detail-label">Seq #</span><span class="exec-detail-val">'+ev.seq+'</span></div>';
+}
+
+function execDraw(){
+  execAnimRAF=requestAnimationFrame(execDraw);
+  if(!execCtx||!execCanvas)return;
+  var W=execCanvas.width,H=execCanvas.height;
+  var now=Date.now();
+  execCtx.clearRect(0,0,W,H);
+  execCtx.fillStyle='rgba(3,3,10,0.92)';
+  execCtx.fillRect(0,0,W,H);
+  execCtx.save();
+  execCtx.translate(W/2+execOffX,H/2+execOffY);
+  execCtx.scale(execScale,execScale);
+
+  execEdges=execEdges.filter(function(e){return(now-e.ts)<EXEC_FADE_MS;});
+  execEdges.forEach(function(edge){
+    var a=Math.max(0,1-(now-edge.ts)/EXEC_FADE_MS);
+    var fx=edge.from.x,fy=edge.from.y,tx=edge.to.x,ty=edge.to.y;
+    var dx=tx-fx,dy=ty-fy,len=Math.sqrt(dx*dx+dy*dy)||1;
+    var ax=tx-dx/len*edge.to.r,ay=ty-dy/len*edge.to.r;
+    execCtx.beginPath();execCtx.moveTo(fx,fy);execCtx.lineTo(ax,ay);
+    execCtx.strokeStyle='rgba(255,255,255,'+(a*0.25)+')';
+    execCtx.lineWidth=1.5/execScale;execCtx.stroke();
+    var ang=Math.atan2(dy,dx);
+    execCtx.beginPath();execCtx.moveTo(ax,ay);
+    execCtx.lineTo(ax-8/execScale*Math.cos(ang-0.4),ay-8/execScale*Math.sin(ang-0.4));
+    execCtx.lineTo(ax-8/execScale*Math.cos(ang+0.4),ay-8/execScale*Math.sin(ang+0.4));
+    execCtx.closePath();execCtx.fillStyle='rgba(255,255,255,'+(a*0.3)+')';execCtx.fill();
+  });
+
+  execNodes.forEach(function(node){
+    var age=now-node.lastHit;
+    node.alpha=Math.max(0.15,1-age/EXEC_FADE_MS);
+    var isSelected=node===execSelectedNode;
+    var pulse=age<400?1+(1-age/400)*0.5:1;
+    var r=node.r*pulse;
+
+    if(age<800){
+      var gAlpha=(1-age/800)*0.4;
+      var grd=execCtx.createRadialGradient(node.x,node.y,r,node.x,node.y,r*3);
+      grd.addColorStop(0,'rgba('+hexToRgb(node.color)+','+gAlpha+')');
+      grd.addColorStop(1,'rgba(0,0,0,0)');
+      execCtx.beginPath();execCtx.arc(node.x,node.y,r*3,0,Math.PI*2);
+      execCtx.fillStyle=grd;execCtx.fill();
+    }
+
+    execCtx.beginPath();execCtx.arc(node.x,node.y,r,0,Math.PI*2);
+    var col=node.color;
+    execCtx.fillStyle=isSelected?col:'rgba('+hexToRgb(col)+','+(0.15+node.alpha*0.25)+')';
+    execCtx.fill();
+    execCtx.strokeStyle=col;
+    execCtx.lineWidth=isSelected?2.5/execScale:1.5/execScale;
+    execCtx.globalAlpha=node.alpha;execCtx.stroke();execCtx.globalAlpha=1;
+
+    execCtx.fillStyle='rgba(232,232,240,'+Math.max(0.4,node.alpha)+')';
+    execCtx.font='bold '+Math.max(12,Math.round(12/execScale))+'px JetBrains Mono,monospace';
+    execCtx.textAlign='center';execCtx.textBaseline='middle';
+    var label=node.name.length>16?node.name.slice(0,14)+'\u2026':node.name;
+    execCtx.fillText(label,node.x,node.y+r+10/execScale);
+
+    if(node.hits>1){
+      execCtx.fillStyle=col;
+      execCtx.font='bold '+Math.round(8/execScale)+'px monospace';
+      execCtx.fillText('\xd7'+node.hits,node.x+r*0.7,node.y-r*0.7);
+    }
+  });
+
+  execCtx.restore();
+}
+
+function hexToRgb(hex){
+  hex=hex.replace('#','');
+  if(hex.length===3)hex=hex[0]+hex[0]+hex[1]+hex[1]+hex[2]+hex[2];
+  var n=parseInt(hex,16);
+  return((n>>16)&255)+','+((n>>8)&255)+','+(n&255);
+}
+
+function execPreviewDragStart(e){
+  e.preventDefault();
+  var wrap=document.getElementById('exec-preview-wrap');
+  var startY=e.clientY,startH=wrap.offsetHeight;
+  var bar=document.getElementById('exec-preview-drag');
+  if(bar)bar.style.background='var(--alert)';
+  function onMove(ev){var newH=Math.max(80,Math.min(window.innerHeight*0.7,startH-(ev.clientY-startY)));wrap.style.height=newH+'px';resizeExecCanvas();}
+  function onUp(){if(bar)bar.style.background='var(--border2)';window.removeEventListener('mousemove',onMove);window.removeEventListener('mouseup',onUp);resizeExecCanvas();}
+  window.addEventListener('mousemove',onMove);window.addEventListener('mouseup',onUp);
+}
+
+function execCanvasMousedown(e){execDragging=true;execDragStart={x:e.clientX-execOffX,y:e.clientY-execOffY};}
+function execCanvasMousemove(e){if(!execDragging||!execDragStart)return;execOffX=e.clientX-execDragStart.x;execOffY=e.clientY-execDragStart.y;}
+function execCanvasWheel(e){e.preventDefault();var delta=e.deltaY>0?0.9:1.1;execScale=Math.max(0.2,Math.min(5,execScale*delta));}
+function execCanvasClick(e){
+  if(!execCanvas)return;
+  var r=execCanvas.getBoundingClientRect();
+  var mx=(e.clientX-r.left)*(execCanvas.width/r.width);
+  var my=(e.clientY-r.top)*(execCanvas.height/r.height);
+  var wx=(mx-execCanvas.width/2-execOffX)/execScale;
+  var wy=(my-execCanvas.height/2-execOffY)/execScale;
+  var hit=null,best=Infinity;
+  execNodes.forEach(function(node){
+    var d=Math.sqrt((wx-node.x)*(wx-node.x)+(wy-node.y)*(wy-node.y));
+    if(d<node.r+12&&d<best){best=d;hit=node;}
+  });
+  if(hit){
+    execSelectedNode=hit;
+    var lastEv=null;
+    for(var i=execEvents.length-1;i>=0;i--){if(execEvents[i].node===hit){lastEv=execEvents[i].ev;break;}}
+    showExecNodeDetail(hit,lastEv||{caller:'—',detail:'—',seq:'—'});
+  }
+}
 </script>
 </body>
 </html>
