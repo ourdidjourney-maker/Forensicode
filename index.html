@@ -54,7 +54,7 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
 /* RIGHT: QUAD */
 #quad{display:flex;flex-direction:column;overflow:hidden;flex:1;min-width:300px}
 .q-pane{display:flex;flex-direction:row;overflow:hidden;flex:1;min-height:80px}.q-pane-inner{display:flex;flex-direction:column;overflow:hidden;flex:1;min-width:80px}
-.q-header{padding:6px 10px;background:var(--panel2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0}
+.q-header{padding:6px 10px;background:var(--panel2);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0;user-select:none;-webkit-user-select:none;}
 .q-title{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase}
 .q-count{font-size:9px;padding:1px 5px;border-radius:2px;margin-left:auto;font-weight:700}
 .q-body{flex:1;overflow-y:auto;padding:0}
@@ -147,7 +147,6 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
 .preview-hint{font-size:24px;opacity:0.3;margin-bottom:4px}
 #preview-toolbar{padding:4px 10px;background:var(--panel2);border-top:1px solid var(--border);display:flex;align-items:center;font-size:10px;color:var(--text-dim);flex-shrink:0}
 #selected-badge{font-size:10px;color:var(--amber);margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px}
-#quad{width:420px;min-width:200px;flex-shrink:0;border-left:none}
 .q-pane-inner{border-right:1px solid var(--border)}
 .q-pane-inner:last-child{border-right:none}
 .quad-row{display:flex;flex-direction:row;flex:1;overflow:hidden;min-height:80px;border-bottom:1px solid var(--border)}
@@ -207,6 +206,9 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
 .et-dom{background:rgba(123,97,255,0.15);color:#7b61ff}
 .et-state{background:rgba(255,170,0,0.15);color:#ffaa00}
 .et-listen{background:rgba(136,153,255,0.15);color:#8899ff}
+.et-net{background:rgba(255,149,0,0.15);color:#ff9500}
+.et-timer{background:rgba(255,110,180,0.15);color:#ff6eb4}
+.et-storage{background:rgba(0,212,170,0.15);color:#00d4aa}
 .exec-name{color:var(--text-bright);font-size:10px}
 .exec-detail-row{display:flex;gap:6px;margin:4px 0}
 .exec-detail-label{color:var(--text-dim);min-width:60px;font-size:10px}
@@ -445,7 +447,10 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
       <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:#00e5cc"></div><span style="color:var(--text-dim)">Function Call</span></div>
       <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:#7b61ff"></div><span style="color:var(--text-dim)">DOM Write</span></div>
       <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:#ffaa00"></div><span style="color:var(--text-dim)">State Change</span></div>
-      <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:#8899ff"></div><span style="color:var(--text-dim)">Listener Fire</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:#8899ff"></div><span style="color:var(--text-dim)">Listener</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:#ff9500"></div><span style="color:var(--text-dim)">Network</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:#ff6eb4"></div><span style="color:var(--text-dim)">Timer</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><div style="width:9px;height:9px;border-radius:50%;background:#00d4aa"></div><span style="color:var(--text-dim)">Storage</span></div>
     </div>
     <div id="exec-stats" style="font-size:10px;color:var(--text-dim);margin-left:auto">EVENTS: <span id="exec-event-count" style="color:var(--alert)">0</span> · CALLS: <span id="exec-call-count" style="color:var(--signal)">0</span></div>
     <button onclick="closeExecTrace()" style="padding:4px 12px;background:transparent;border:1px solid var(--alert-dim);color:var(--alert);font-family:var(--mono);font-size:11px;cursor:pointer">✕ CLOSE</button>
@@ -2781,32 +2786,31 @@ function initResize(){
   makeDragCol('dh-col-2',
     function(){ return document.getElementById('preview-pane'); },
     function(){ return document.getElementById('quad'); },
-    false
+    true
   );
   makeDragRow('dh-quad-mid',
     function(){ return document.getElementById('quad-row-top'); },
     function(){ return document.getElementById('quad-row-bot'); }
   );
   makeDragCol('dh-quad-top',
-    function(){ return document.getElementById('qpi-structure'); },
-    function(){ return document.getElementById('qpi-styles'); },
-    false
+    function(){ return document.getElementById('qpi-structure').parentElement; },
+    function(){ return document.getElementById('qpi-styles').parentElement; },
+    true, 60
   );
   makeDragCol('dh-quad-bot',
-    function(){ return document.getElementById('qpi-connections'); },
-    function(){ return document.getElementById('qpi-behavior'); },
-    false
+    function(){ return document.getElementById('qpi-connections').parentElement; },
+    function(){ return document.getElementById('qpi-behavior').parentElement; },
+    true, 60
   );
 }
 
-function makeDragCol(handleId, getLeft, getRight, isOuter){
+function makeDragCol(handleId, getLeft, getRight, isOuter, minW){
   var handle = document.getElementById(handleId);
   if(!handle) return;
-  var dragging = false, startX = 0, startLeftW = 0, startRightW = 0;
+  var startX = 0, startLeftW = 0, startRightW = 0;
   var collapsed = false, savedW = 0;
-  var MIN = isOuter ? 120 : 60;
+  var MIN = minW !== undefined ? minW : (isOuter ? 120 : 60);
 
-  // Double-click = collapse/restore left pane
   handle.addEventListener('dblclick', function(e){
     e.preventDefault();
     var left = getLeft(), right = getRight();
@@ -2819,7 +2823,6 @@ function makeDragCol(handleId, getLeft, getRight, isOuter){
       left.style.minWidth = '0px';
       left.style.overflow = 'hidden';
       left.style.flex = 'none';
-      // Special: input-pane — also hide its non-header children
       if(left.id === 'input-pane'){
         Array.from(left.children).forEach(function(c){
           if(!c.classList.contains('pane-header')) c.style.visibility = 'hidden';
@@ -2835,9 +2838,7 @@ function makeDragCol(handleId, getLeft, getRight, isOuter){
       left.style.overflow = '';
       left.style.flex = 'none';
       if(left.id === 'input-pane'){
-        Array.from(left.children).forEach(function(c){
-          c.style.visibility = '';
-        });
+        Array.from(left.children).forEach(function(c){ c.style.visibility = ''; });
       }
     }
   });
@@ -2845,8 +2846,7 @@ function makeDragCol(handleId, getLeft, getRight, isOuter){
   handle.title = 'Drag to resize · Double-click to collapse';
 
   handle.addEventListener('mousedown', function(e){
-    if(e.detail > 1) return; // skip on double-click
-    dragging = true;
+    if(e.detail > 1) return;
     startX = e.clientX;
     var left = getLeft(), right = getRight();
     startLeftW = left.getBoundingClientRect().width;
@@ -2855,48 +2855,51 @@ function makeDragCol(handleId, getLeft, getRight, isOuter){
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
     e.preventDefault();
-  });
 
-  document.addEventListener('mousemove', function(e){
-    if(!dragging) return;
-    var dx = e.clientX - startX;
-    var left = getLeft(), right = getRight();
-    var newLeft = Math.max(MIN, startLeftW + dx);
-    left.style.width = newLeft + 'px';
-    left.style.flex = 'none';
-    if(isOuter){
-      right.style.flex = '1';
-      right.style.width = '';
-    } else {
-      var newRight = Math.max(MIN, startRightW - dx);
-      right.style.width = newRight + 'px';
-      right.style.flex = 'none';
-    }
-    // If drag restores a collapsed pane
-    if(collapsed && newLeft > MIN + 20){
-      collapsed = false;
-      handle.classList.remove('collapsed-left');
-      left.style.minWidth = MIN + 'px';
-      left.style.overflow = '';
-      if(left.id === 'input-pane'){
-        Array.from(left.children).forEach(function(c){ c.style.visibility = ''; });
+    function onMove(e){
+      var dx = e.clientX - startX;
+      var left = getLeft(), right = getRight();
+      var newLeft = Math.max(MIN, startLeftW + dx);
+      left.style.width = newLeft + 'px';
+      left.style.flex = 'none';
+      if(isOuter){
+        right.style.flex = '1';
+        right.style.width = '';
+      } else {
+        var newRight = Math.max(MIN, startRightW - dx);
+        right.style.width = newRight + 'px';
+        right.style.flex = 'none';
+      }
+      if(collapsed && newLeft > MIN + 20){
+        collapsed = false;
+        handle.classList.remove('collapsed-left');
+        left.style.minWidth = MIN + 'px';
+        left.style.overflow = '';
+        if(left.id === 'input-pane'){
+          Array.from(left.children).forEach(function(c){ c.style.visibility = ''; });
+        }
       }
     }
-  });
 
-  document.addEventListener('mouseup', function(){
-    if(!dragging) return;
-    dragging = false;
-    handle.classList.remove('dragging');
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
+    function onUp(){
+      handle.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('blur', onUp);
+    }
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('blur', onUp);
   });
 }
 
 function makeDragRow(handleId, getTop, getBot){
   var handle = document.getElementById(handleId);
   if(!handle) return;
-  var dragging = false, startY = 0, startTopH = 0, startBotH = 0;
+  var startY = 0, startTopH = 0, startBotH = 0;
   var collapsed = false, savedH = 0;
 
   handle.addEventListener('dblclick', function(e){
@@ -2926,7 +2929,6 @@ function makeDragRow(handleId, getTop, getBot){
 
   handle.addEventListener('mousedown', function(e){
     if(e.detail > 1) return;
-    dragging = true;
     startY = e.clientY;
     startTopH = getTop().getBoundingClientRect().height;
     startBotH = getBot().getBoundingClientRect().height;
@@ -2934,35 +2936,37 @@ function makeDragRow(handleId, getTop, getBot){
     document.body.style.cursor = 'row-resize';
     document.body.style.userSelect = 'none';
     e.preventDefault();
-  });
 
-  document.addEventListener('mousemove', function(e){
-    if(!dragging) return;
-    var dy = e.clientY - startY;
-    var top = getTop(), bot = getBot();
-    var newTop = Math.max(60, startTopH + dy);
-    var newBot = Math.max(60, startBotH - dy);
-    top.style.flex = 'none'; top.style.height = newTop + 'px';
-    bot.style.flex = 'none'; bot.style.height = newBot + 'px';
-    if(collapsed && newTop > 80){
-      collapsed = false;
-      handle.classList.remove('collapsed-top');
-      top.style.minHeight = '60px';
-      top.style.overflow = '';
+    function onMove(e){
+      var dy = e.clientY - startY;
+      var top = getTop(), bot = getBot();
+      var newTop = Math.max(60, startTopH + dy);
+      var newBot = Math.max(60, startBotH - dy);
+      top.style.flex = 'none'; top.style.height = newTop + 'px';
+      bot.style.flex = 'none'; bot.style.height = newBot + 'px';
+      if(collapsed && newTop > 80){
+        collapsed = false;
+        handle.classList.remove('collapsed-top');
+        top.style.minHeight = '60px';
+        top.style.overflow = '';
+      }
     }
-  });
 
-  document.addEventListener('mouseup', function(){
-    if(!dragging) return;
-    dragging = false;
-    handle.classList.remove('dragging');
-    document.body.style.cursor = '';
-    document.body.style.userSelect = '';
+    function onUp(){
+      handle.classList.remove('dragging');
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('blur', onUp);
+    }
+
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    window.addEventListener('blur', onUp);
   });
 }
 
-
-// ══════════════════════════════════════════════════════════════════════════════
 // PAGE NETWORK MAP ENGINE
 // ══════════════════════════════════════════════════════════════════════════════
 var netNodes=[], netEdges=[], netOffset={x:0,y:0}, netScale=1;
@@ -4094,7 +4098,7 @@ var execAnimRAF=null;
 var execScale=1,execOffX=0,execOffY=0;
 var execDragging=false,execDragStart=null;
 var EXEC_FADE_MS=3500;
-var EXEC_COLORS={'event':'#ff4d6d','call':'#00e5cc','dom':'#7b61ff','state':'#ffaa00','listen':'#8899ff'};
+var EXEC_COLORS={'event':'#ff4d6d','call':'#00e5cc','dom':'#7b61ff','state':'#ffaa00','listen':'#8899ff','net':'#ff9500','timer':'#ff6eb4','storage':'#00d4aa'};
 
 function openExecTrace(){
   var p=document.getElementById('exec-pane');
@@ -4179,6 +4183,8 @@ function instrumentHTML(html){
     '  var ev={type:type,name:name,detail:detail||"",caller:caller||"",seq:++__seq,ts:Date.now()};',
     '  try{window.parent.postMessage({__execTrace:true,ev:ev},"*");}catch(e){}',
     '}',
+
+    // ── Event listeners ──────────────────────────────────
     'var __origAEL=EventTarget.prototype.addEventListener;',
     'EventTarget.prototype.addEventListener=function(type,fn,opts){',
     '  var wrapped=function(e){',
@@ -4187,21 +4193,168 @@ function instrumentHTML(html){
     '  };',
     '  return __origAEL.call(this,type,wrapped,opts);',
     '};',
+    'var __origREL=EventTarget.prototype.removeEventListener;',
+    'EventTarget.prototype.removeEventListener=function(type,fn,opts){',
+    '  __emit("listen","removeListener",type,"dom");',
+    '  return __origREL.call(this,type,fn,opts);',
+    '};',
+
+    // ── DOM creation / insertion ──────────────────────────
     'var __origAC=Node.prototype.appendChild;',
     'Node.prototype.appendChild=function(node){',
     '  __emit("dom","appendChild",node&&node.tagName?node.tagName:"node","dom");',
     '  return __origAC.apply(this,arguments);',
+    '};',
+    'var __origIC=Node.prototype.insertBefore;',
+    'Node.prototype.insertBefore=function(node,ref){',
+    '  __emit("dom","insertBefore",node&&node.tagName?node.tagName:"node","dom");',
+    '  return __origIC.apply(this,arguments);',
+    '};',
+    'var __origRC=Node.prototype.removeChild;',
+    'Node.prototype.removeChild=function(node){',
+    '  __emit("dom","removeChild",node&&node.tagName?node.tagName:"node","dom");',
+    '  return __origRC.apply(this,arguments);',
     '};',
     'var __origCE=document.createElement.bind(document);',
     'document.createElement=function(tag){',
     '  __emit("dom","createElement",tag,"dom");',
     '  return __origCE(tag);',
     '};',
+
+    // ── Attributes & class ───────────────────────────────
     'var __origSA=Element.prototype.setAttribute;',
     'Element.prototype.setAttribute=function(k,v){',
     '  __emit("state","setAttribute",k+"="+String(v).slice(0,40),"dom");',
     '  return __origSA.apply(this,arguments);',
     '};',
+    'var __origRA=Element.prototype.removeAttribute;',
+    'Element.prototype.removeAttribute=function(k){',
+    '  __emit("state","removeAttribute",k,"dom");',
+    '  return __origRA.apply(this,arguments);',
+    '};',
+    // classList
+    'var __origCA=DOMTokenList.prototype.add;',
+    'DOMTokenList.prototype.add=function(){',
+    '  __emit("state","classList.add",Array.from(arguments).join(" "),"dom");',
+    '  return __origCA.apply(this,arguments);',
+    '};',
+    'var __origCR=DOMTokenList.prototype.remove;',
+    'DOMTokenList.prototype.remove=function(){',
+    '  __emit("state","classList.remove",Array.from(arguments).join(" "),"dom");',
+    '  return __origCR.apply(this,arguments);',
+    '};',
+    'var __origCT=DOMTokenList.prototype.toggle;',
+    'DOMTokenList.prototype.toggle=function(cls){',
+    '  __emit("state","classList.toggle",cls,"dom");',
+    '  return __origCT.apply(this,arguments);',
+    '};',
+
+    // ── innerHTML / textContent writes ───────────────────
+    'try{',
+    'var __ihDesc=Object.getOwnPropertyDescriptor(Element.prototype,"innerHTML");',
+    'if(__ihDesc&&__ihDesc.set){',
+    '  var __origIH=__ihDesc.set;',
+    '  Object.defineProperty(Element.prototype,"innerHTML",{',
+    '    get:__ihDesc.get,',
+    '    set:function(v){',
+    '      __emit("dom","innerHTML.write",String(v).slice(0,60),"dom");',
+    '      return __origIH.call(this,v);',
+    '    }',
+    '  });',
+    '}',
+    '}catch(e){}',
+
+    // ── Image loads ─────────────────────────────────────
+    'var __origImg=window.Image;',
+    'window.Image=function(w,h){',
+    '  var img=new __origImg(w,h);',
+    '  var __origSrc=Object.getOwnPropertyDescriptor(__origImg.prototype,"src");',
+    '  img.addEventListener("load",function(){__emit("event","image.loaded",img.src.split("/").pop().slice(0,40),"img");});',
+    '  img.addEventListener("error",function(){__emit("event","image.error",img.src.split("/").pop().slice(0,40),"img");});',
+    '  return img;',
+    '};',
+
+    // ── Script loads (dynamic) ───────────────────────────
+    'var __origCE2=document.createElement.bind(document);',  // already wrapped above, hook after
+    // We watch appendChild — if it's a SCRIPT tag with src, emit script.load
+    'var __origAC2=Node.prototype.appendChild;',
+    // Override again to catch script injection specifically  
+    'var __prevAC=Node.prototype.appendChild;',
+    'Node.prototype.appendChild=function(node){',
+    '  if(node&&node.tagName==="SCRIPT"&&node.src){',
+    '    __emit("call","script.load",node.src.split("/").pop().slice(0,50),"script");',
+    '  }',
+    '  return __prevAC.apply(this,arguments);',
+    '};',
+
+    // ── Fetch ────────────────────────────────────────────
+    'if(window.fetch){',
+    '  var __origFetch=window.fetch;',
+    '  window.fetch=function(url,opts){',
+    '    var method=(opts&&opts.method)||"GET";',
+    '    var urlStr=typeof url==="string"?url:(url.url||String(url));',
+    '    __emit("call","fetch."+method.toLowerCase(),urlStr.slice(0,60),"net");',
+    '    return __origFetch.apply(this,arguments).then(function(r){',
+    '      __emit("event","fetch.response",r.status+" "+urlStr.split("/").pop().slice(0,40),"net");',
+    '      return r;',
+    '    });',
+    '  };',
+    '}',
+
+    // ── XMLHttpRequest ────────────────────────────────────
+    'var __origXHROpen=XMLHttpRequest.prototype.open;',
+    'XMLHttpRequest.prototype.open=function(method,url){',
+    '  this.__execUrl=url;this.__execMethod=method;',
+    '  __emit("call","xhr.open",method+" "+String(url).slice(0,50),"net");',
+    '  return __origXHROpen.apply(this,arguments);',
+    '};',
+    'var __origXHRSend=XMLHttpRequest.prototype.send;',
+    'XMLHttpRequest.prototype.send=function(body){',
+    '  var self=this;',
+    '  __origAEL.call(this,"readystatechange",function(){',
+    '    if(self.readyState===4){__emit("event","xhr.response",self.status+" "+(self.__execUrl||"").split("/").pop().slice(0,40),"net");}',
+    '  });',
+    '  __emit("call","xhr.send",(this.__execUrl||"").slice(0,50),"net");',
+    '  return __origXHRSend.apply(this,arguments);',
+    '};',
+
+    // ── Timers ────────────────────────────────────────────
+    'var __origST=window.setTimeout;',
+    'window.setTimeout=function(fn,delay){',
+    '  __emit("call","setTimeout",delay+"ms","timer");',
+    '  return __origST.apply(this,arguments);',
+    '};',
+    'var __origSI=window.setInterval;',
+    'window.setInterval=function(fn,delay){',
+    '  __emit("call","setInterval",delay+"ms","timer");',
+    '  return __origSI.apply(this,arguments);',
+    '};',
+
+    // ── Console ───────────────────────────────────────────
+    'var __conMethods=["log","warn","error","info"];',
+    '__conMethods.forEach(function(m){',
+    '  var __orig=console[m];',
+    '  console[m]=function(){',
+    '    var msg=Array.from(arguments).map(function(a){try{return typeof a==="object"?JSON.stringify(a):String(a);}catch(e){return String(a);}}).join(" ").slice(0,80);',
+    '    __emit("state","console."+m,msg,"console");',
+    '    return __orig.apply(console,arguments);',
+    '  };',
+    '});',
+
+    // ── localStorage / sessionStorage ────────────────────
+    'try{',
+    'var __origLSSet=Storage.prototype.setItem;',
+    'Storage.prototype.setItem=function(k,v){',
+    '  __emit("state","storage.set",k+"="+String(v).slice(0,40),"storage");',
+    '  return __origLSSet.apply(this,arguments);',
+    '};',
+    'var __origLSGet=Storage.prototype.getItem;',
+    'Storage.prototype.getItem=function(k){',
+    '  __emit("state","storage.get",k,"storage");',
+    '  return __origLSGet.apply(this,arguments);',
+    '};',
+    '}catch(e){}',
+
     'window.__emit=__emit;',
     '})();',
     '<\/script>'
@@ -4325,6 +4478,9 @@ function execDraw(){
     execCtx.closePath();execCtx.fillStyle='rgba(255,255,255,'+(a*0.3)+')';execCtx.fill();
   });
 
+  // Collect label positions during node loop — drawn after restore() in screen space
+  var execLabels=[];
+
   execNodes.forEach(function(node){
     var age=now-node.lastHit;
     node.alpha=Math.max(0.15,1-age/EXEC_FADE_MS);
@@ -4349,20 +4505,28 @@ function execDraw(){
     execCtx.lineWidth=isSelected?2.5/execScale:1.5/execScale;
     execCtx.globalAlpha=node.alpha;execCtx.stroke();execCtx.globalAlpha=1;
 
-    execCtx.fillStyle='rgba(232,232,240,'+Math.max(0.4,node.alpha)+')';
-    execCtx.font='bold '+Math.max(12,Math.round(12/execScale))+'px JetBrains Mono,monospace';
-    execCtx.textAlign='center';execCtx.textBaseline='middle';
-    var label=node.name.length>16?node.name.slice(0,14)+'\u2026':node.name;
-    execCtx.fillText(label,node.x,node.y+r+10/execScale);
-
     if(node.hits>1){
       execCtx.fillStyle=col;
       execCtx.font='bold '+Math.round(8/execScale)+'px monospace';
+      execCtx.textAlign='center';execCtx.textBaseline='middle';
       execCtx.fillText('\xd7'+node.hits,node.x+r*0.7,node.y-r*0.7);
     }
+
+    // Store screen-space position for label pass after restore()
+    var sx=(node.x)*execScale+(W/2+execOffX);
+    var sy=(node.y+r+14)*execScale+(H/2+execOffY);
+    execLabels.push({sx:sx,sy:sy,label:node.name.length>18?node.name.slice(0,16)+'\u2026':node.name,alpha:node.alpha,col:col});
   });
 
   execCtx.restore();
+
+  // Label pass — screen space, fixed 13px regardless of zoom
+  execCtx.textAlign='center';execCtx.textBaseline='middle';
+  execCtx.font='bold 13px JetBrains Mono,monospace';
+  execLabels.forEach(function(lb){
+    execCtx.fillStyle='rgba(232,232,240,'+Math.max(0.5,lb.alpha)+')';
+    execCtx.fillText(lb.label,lb.sx,lb.sy);
+  });
 }
 
 function hexToRgb(hex){
