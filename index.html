@@ -163,17 +163,15 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
 #web-legend{display:flex;gap:16px;font-size:10px}
 .wl-item{display:flex;align-items:center;gap:5px}
 .wl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-/* HOVER CARD */
-#hover-card.pinned{border-color:var(--amber);box-shadow:0 8px 32px rgba(255,170,0,0.25)}
-#hover-card{position:fixed;z-index:9000;background:#07090f;border:1px solid var(--signal-dim);border-radius:4px;padding:0;max-width:400px;min-width:280px;pointer-events:none;display:none;box-shadow:0 8px 32px rgba(0,0,0,0.9);overflow:hidden;max-height:80vh;overflow-y:auto}
-.hc-tag{font-size:13px;font-weight:700;color:var(--signal);font-family:var(--mono);margin-bottom:4px}
-.hc-what{font-size:12px;color:var(--text-bright);font-family:var(--sans);line-height:1.5;margin-bottom:6px}
-.hc-props{font-size:11px;color:var(--text-dim);font-family:var(--sans);line-height:1.6}
-.hc-prop-line{display:flex;gap:6px;align-items:baseline}
-.hc-prop-label{color:var(--text-dim);min-width:60px;flex-shrink:0}
-.hc-prop-val{color:var(--text)}
+/* INSPECT PANE */
+#inspect-pane{display:flex;flex-direction:column;overflow:hidden;width:300px;min-width:180px;max-width:600px;flex-shrink:0;border-left:1px solid var(--border2);background:var(--panel)}
+#inspect-pane-header{display:flex;align-items:center;justify-content:space-between;padding:0 10px;height:32px;background:var(--panel2);border-bottom:1px solid var(--border2);flex-shrink:0}
+#inspect-pane-title{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--signal);font-family:var(--mono)}
+#inspect-pane-body{flex:1;overflow-y:auto;overflow-x:hidden}
+#dh-inspect{width:5px;flex-shrink:0;cursor:col-resize;background:var(--border);transition:background .15s}
+#dh-inspect:hover{background:var(--signal-dim)}
 .hc-hint{font-size:10px;color:var(--signal-dim);margin-top:6px;font-family:var(--sans);border-top:1px solid var(--border);padding-top:5px}
-.atomic-card{padding:10px 14px}
+.atomic-card{padding:10px 14px;overflow-x:hidden;word-break:break-word}
 .atomic-header{background:#0f1520;padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
 .atomic-tag{font-size:12px;font-weight:700;font-family:var(--mono);color:var(--signal)}
 .atomic-sub{font-size:10px;color:var(--text-dim);font-family:var(--mono)}
@@ -379,6 +377,16 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
       </div>
     </div>
   </div>
+  <div id="dh-inspect"></div>
+  <div id="inspect-pane">
+    <div id="inspect-pane-header">
+      <div id="inspect-pane-title">⬡ INSPECT</div>
+      <span style="font-size:9px;color:var(--border2);font-family:var(--mono);letter-spacing:1px">CLICK ANY ELEMENT</span>
+    </div>
+    <div id="inspect-pane-body">
+      <div style="padding:40px 16px;text-align:center;color:var(--border2);font-size:11px;font-family:var(--mono);letter-spacing:1px">Click any element<br>to inspect it here</div>
+    </div>
+  </div>
 </div>
 
 
@@ -425,7 +433,6 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
   </div>
   <canvas id="net-canvas" style="flex:1;display:block;width:100%;cursor:grab"></canvas>
 </div>
-<div id="hover-card"></div>
 <div id="statusbar">
   <div class="status-dot" id="status-dot"></div>
   <div id="status-msg">READY — PASTE HTML TO BEGIN</div>
@@ -659,7 +666,6 @@ function handlePreviewClick(info){
 
 // ── PREVIEW HOVER CARD — THE FULL FORENSIC READOUT ───────────────────────────
 function showPreviewHoverCard(info){
-  var card=document.getElementById('hover-card');
   var tag=info.tag;
   var classes=(info.className||'').trim().split(/\s+/).filter(Boolean);
   var idStr=info.id?'#'+info.id:'';
@@ -725,35 +731,10 @@ function showPreviewHoverCard(info){
 
   html+='<div style="font-size:10px;color:var(--signal-dim);margin-top:8px;font-family:var(--sans);border-top:1px solid var(--border);padding-top:5px">CLICK to lock in and inspect all details →</div>';
 
-  card.innerHTML=html;
-  card.style.display='block';
-  card.style.maxWidth='320px';
-
-  // position near iframe but fixed to viewport
-  var frame=document.getElementById('preview-frame');
-  var frect=frame.getBoundingClientRect();
-  // try to parse rect from info
-  var elRect=null;
-  try{elRect=JSON.parse(info.rect);}catch(e){}
-  var x,y;
-  if(elRect){
-    x=frect.left+elRect.right+12;
-    y=frect.top+elRect.top;
-  } else {
-    x=frect.right+12;
-    y=frect.top+40;
-  }
-  if(x+340>window.innerWidth) x=frect.left-340;
-  if(x<0) x=frect.right+4;
-  if(y+420>window.innerHeight) y=window.innerHeight-430;
-  if(y<42) y=42;
-  card.style.left=x+'px';
-  card.style.top=y+'px';
+  showInspectPane(html);
 }
 
-function hidePreviewHoverCard(){
-  document.getElementById('hover-card').style.display='none';
-}
+function hidePreviewHoverCard(){}
 
 function highlightConnectionsForEl(el){
   // future: scroll connections pane to show this element's connections
@@ -803,118 +784,42 @@ function buildStructurePane(){
 // One function. Called from tree nodes, style rows, connection cards, behavior.
 // ══════════════════════════════════════════════════════════════════════════════
 
-var _tooltipTimer = null;
-var _freezeTimer = null;
-var _cardFrozen = false;
-
-function showAtomicTooltip(html, e){
-  if(_cardFrozen) return;
-  clearTimeout(_tooltipTimer);
-  clearTimeout(_freezeTimer);
-  var card = document.getElementById('hover-card');
-  var pinBar = '<div class="card-pin-bar" id="card-pin-bar" style="display:flex;align-items:center;justify-content:space-between;padding:4px 10px;background:#0a0c15;border-bottom:1px solid var(--border);font-size:9px;font-family:var(--mono);color:var(--border2)">STOP MOVING TO LOCK · ESC TO CLOSE<span style="cursor:pointer;color:var(--alert);font-size:11px;padding:0 4px" onclick="dismissCard()">&#x2715;</span></div>';
-  card.innerHTML = pinBar + html;
-  card.classList.remove('pinned');
-  card.style.display = 'block';
-  _placeCard(e, card);
-  _freezeTimer = setTimeout(function(){
-    if(card.style.display !== 'none') _freezeCard();
-  }, 600);
+// ── INSPECT PANE ─────────────────────────────────────────────────────────────
+function showInspectPane(html){
+  var body = document.getElementById('inspect-pane-body');
+  if(!body) return;
+  body.innerHTML = html;
 }
 
-function _placeCard(e, card){
-  var inNet = document.getElementById('net-pane')&&document.getElementById('net-pane').style.display==='flex';
-  var inWeb = document.getElementById('web-pane').classList.contains('visible');
-  var inCanvas = inNet || inWeb;
+function dismissCard(){} // no-op stub — called from legacy button code
 
-  // Measure actual card size — position offscreen first to get real dimensions
-  card.style.left = '-9999px';
-  card.style.top = '-9999px';
-  card.style.width = inCanvas ? '440px' : '';
-  // Force reflow to get real measurements
-  var w = card.offsetWidth || (inCanvas ? 440 : 360);
-  var h = card.offsetHeight || 300;
-  // Clamp to reasonable max
-  w = Math.min(w, inCanvas ? 460 : 400);
+function showAtomicTooltip(html, e){ showInspectPane(html); } // legacy shim
+function hideAtomicTooltip(){}
+function positionAtomicTooltip(){}
+function positionHoverCard(){}
+function hideHoverCard(){}
 
-  var vw = window.innerWidth, vh = window.innerHeight;
-  var MARGIN = 12;
-  var x, y;
-
-  // Horizontal: prefer right of cursor, flip left if no room
-  if(e.clientX + w + MARGIN <= vw - MARGIN){
-    x = e.clientX + MARGIN;
-  } else if(e.clientX - w - MARGIN >= MARGIN){
-    x = e.clientX - w - MARGIN;
-  } else {
-    x = Math.max(MARGIN, Math.round((vw - w) / 2));
-  }
-
-  // Vertical: prefer below cursor, flip up if no room
-  if(e.clientY + MARGIN + h <= vh - MARGIN){
-    y = e.clientY + MARGIN;
-  } else if(e.clientY - h - MARGIN >= 44){
-    y = e.clientY - h - MARGIN;
-  } else {
-    y = 44;
-  }
-
-  // Hard clamp — never go offscreen
-  if(x + w > vw - MARGIN) x = vw - w - MARGIN;
-  if(x < MARGIN) x = MARGIN;
-  if(y + h > vh - MARGIN) y = vh - h - MARGIN;
-  if(y < 44) y = 44;
-
-  card.style.left = x + 'px';
-  card.style.top = y + 'px';
-}
-
-function positionAtomicTooltip(e, card){
-  if(_cardFrozen) return;
-  clearTimeout(_freezeTimer);
-  _placeCard(e, card);
-  _freezeTimer = setTimeout(function(){
-    if(card.style.display !== 'none') _freezeCard();
-  }, 600);
-}
-
-function _freezeCard(){
-  if(_cardFrozen) return;
-  _cardFrozen = true;
-  var card = document.getElementById('hover-card');
-  card.classList.add('pinned');
-  card.style.pointerEvents = 'auto';
-  var bar = document.getElementById('card-pin-bar');
-  if(bar){
-    bar.style.color = 'var(--amber)';
-    bar.style.background = '#100800';
-    bar.innerHTML = 'LOCKED — ESC OR CLICK OUTSIDE TO CLOSE<span style="cursor:pointer;color:var(--alert);font-size:11px;padding:0 4px;margin-left:auto" onclick="dismissCard()">&#x2715;</span>';
-  }
-}
-
-function hideAtomicTooltip(){
-  if(_cardFrozen) return;
-  clearTimeout(_freezeTimer);
-  _tooltipTimer = setTimeout(function(){
-    if(!_cardFrozen) document.getElementById('hover-card').style.display = 'none';
-  }, 150);
-}
-
-function dismissCard(){
-  _cardFrozen = false;
-  clearTimeout(_freezeTimer);
-  clearTimeout(_tooltipTimer);
-  var card = document.getElementById('hover-card');
-  card.classList.remove('pinned');
-  card.style.display = 'none';
-  card.style.pointerEvents = 'none';
-}
-
-document.addEventListener('click', function(e){
-  var card = document.getElementById('hover-card');
-  if(_cardFrozen && card && !card.contains(e.target)) dismissCard();
-});
-document.addEventListener('keydown', function(e){ if(e.key === 'Escape') dismissCard(); });
+// Inspect pane drag-to-resize
+(function(){
+  var dh = document.getElementById('dh-inspect');
+  var pane = document.getElementById('inspect-pane');
+  if(!dh||!pane) return;
+  var dragging=false, startX=0, startW=0;
+  dh.addEventListener('mousedown',function(e){
+    dragging=true; startX=e.clientX; startW=pane.offsetWidth;
+    document.body.style.cursor='col-resize';
+    document.body.style.userSelect='none';
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove',function(e){
+    if(!dragging) return;
+    var newW=Math.max(180,Math.min(600,startW-(e.clientX-startX)));
+    pane.style.width=newW+'px';
+  });
+  document.addEventListener('mouseup',function(){
+    if(dragging){dragging=false;document.body.style.cursor='';document.body.style.userSelect='';}
+  });
+})();
 
 function atomicCard(header, sections, footer, node){
   var html = '<div class="atomic-header">';
@@ -1139,7 +1044,7 @@ function buildMiniSource(node){
   var end = Math.min(_sourceLines.length - 1, lineNum - 1 + CONTEXT);
   var html = '<div style="background:#03030a;border-top:1px solid var(--border2);padding:8px 0">';
   html += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);font-family:var(--mono);padding:0 12px 5px">IN YOUR HTML — LINE '+lineNum+'</div>';
-  html += '<div style="overflow-x:auto">';
+  html += '<div style="overflow-x:auto;max-width:100%">';
   for(var i = start; i <= end; i++){
     var isTarget = (i === lineNum - 1);
     var lineText = _sourceLines[i] || '';
@@ -1476,14 +1381,7 @@ function renderNode(node,parent,depth){
     }
     selectElement(idx,row);
   });
-  row.addEventListener('mouseenter',function(e){
-    var atomic=getTagAtomic(node);
-    showAtomicTooltip(atomicCard(atomic.header,atomic.sections,atomic.footer,node),e);
-  });
-  row.addEventListener('mousemove',function(e){
-    positionAtomicTooltip(e,document.getElementById('hover-card'));
-  });
-  row.addEventListener('mouseleave',function(){ hideAtomicTooltip(); });
+  // hover listeners removed
   parent.appendChild(row);
 
   if(hasChildren){
@@ -1525,7 +1423,12 @@ function selectElement(idx,row){
   document.querySelectorAll('.tree-node.selected').forEach(function(r){r.classList.remove('selected');});
   if(row&&row.classList){row.classList.add('selected','scan-line');setTimeout(function(){if(row.classList)row.classList.remove('scan-line');},600);}
   selectedEl=allElements[idx];
-  if(selectedEl){buildStylesPane(selectedEl);jumpToSource(selectedEl);}
+  if(selectedEl){
+    buildStylesPane(selectedEl);
+    jumpToSource(selectedEl);
+    var atomic=getTagAtomic(selectedEl);
+    showInspectPane(atomicCard(atomic.header,atomic.sections,atomic.footer,selectedEl));
+  }
 }
 
 function escHtml(s){
@@ -1842,10 +1745,8 @@ function makeStyleRow(prop,val,inherited,parent){
       null,
       selectedEl||null
     );
-    showAtomicTooltip(html,e);
+    showInspectPane(html);
   });
-  r.addEventListener('mousemove',function(e){ positionAtomicTooltip(e,document.getElementById('hover-card')); });
-  r.addEventListener('mouseleave',hideAtomicTooltip);
   parent.appendChild(r);
 }
 
@@ -2011,10 +1912,8 @@ function buildConnectionsPane(){
             null,
             firstNode
           );
-          showAtomicTooltip(html,e);
+          showInspectPane(html);
         });
-        card.addEventListener('mousemove',function(e){ positionAtomicTooltip(e,document.getElementById('hover-card')); });
-        card.addEventListener('mouseleave',hideAtomicTooltip);
       })(text, tc, name, info);
       container.appendChild(card);
     });
@@ -2546,16 +2445,12 @@ function bindWebEvents(){
     var node=getNodeAtEvent(e);
     if(node!==webHoverNode){
       webHoverNode=node;
-      if(node) showWebHoverCard(e,node);
-      else hideHoverCard();
-    } else if(node){
-      // update card position
-      positionHoverCard(e);
+      // hover removed
     }
   });
 
   canvas.addEventListener('mouseup',function(){webDragging=false;});
-  canvas.addEventListener('mouseleave',function(){webDragging=false;hideHoverCard();webHoverNode=null;});
+  canvas.addEventListener('mouseleave',function(){webDragging=false;webHoverNode=null;});
 }
 
 function getNodeAtEvent(e){
@@ -2583,12 +2478,10 @@ function showWebHoverCard(e,node){
     null,
     node.el||null
   );
-  showAtomicTooltip(html,e);
+  showInspectPane(html);
 }
 
-function positionHoverCard(e){
-  positionAtomicTooltip(e,document.getElementById('hover-card'));
-}
+function positionHoverCard(){}
 
 function hideHoverCard(){
   hideAtomicTooltip();
@@ -2641,7 +2534,7 @@ function buildSourceViewer(){
     var domNode=findNodeOnLine(lineNum,tagName);
     if(domNode){
       var atomic=getTagAtomic(domNode);
-      showAtomicTooltip(atomicCard(atomic.header,atomic.sections,atomic.footer,domNode),e);
+      showInspectPane(atomicCard(atomic.header,atomic.sections,atomic.footer,domNode));
     } else {
       // generic from tag name alone
       var eng=getTagPlainEnglish(tagName);
@@ -2650,15 +2543,10 @@ function buildSourceViewer(){
         [{label:'WHAT IS IT',color:'var(--signal)',lines:[eng||'A &lt;'+tagName+'&gt; HTML element.']}],
         null, null
       );
-      showAtomicTooltip(html,e);
+      showInspectPane(html);
     }
   });
-  codeEl.addEventListener('mouseout',function(e){
-    if(!e.relatedTarget||!e.relatedTarget.closest||!e.relatedTarget.closest('#source-code')) hideAtomicTooltip();
-  });
-  codeEl.addEventListener('mousemove',function(e){
-    positionAtomicTooltip(e,document.getElementById('hover-card'));
-  });
+  // source hover listeners removed
   // Click a source line = select that element
   codeEl.addEventListener('click',function(e){
     var lineEl=e.target.closest('.src-line');
@@ -3853,15 +3741,12 @@ function bindNetEvents(){
     var node=getNetNodeAt(e);
     if(node!==netHoverNode){
       netHoverNode=node;
-      if(node&&!netIsolatedNode) showNetHoverCard(e,node);
-      else if(!netIsolatedNode) hideAtomicTooltip();
-    } else if(node&&!_cardFrozen&&!netIsolatedNode){
-      positionAtomicTooltip(e,document.getElementById('hover-card'));
+      // hover removed
     }
   });
 
   canvas.addEventListener('mouseup',function(){netDragging=false;});
-  canvas.addEventListener('mouseleave',function(){netDragging=false;netHoverNode=null;if(!netIsolatedNode)hideAtomicTooltip();});
+  canvas.addEventListener('mouseleave',function(){netDragging=false;netHoverNode=null;});
 
   window.addEventListener('resize',function(){
     if(netCanvas&&document.getElementById('net-pane').style.display==='flex'){
@@ -4021,7 +3906,7 @@ function showNetHoverCard(e,node){
     html+=buildMiniSourceFromUrls(urlsToFind,node.domain||'');
   }
 
-  showAtomicTooltip(html,e);
+  showInspectPane(html);
 }
 
 function buildMiniSourceFromUrls(urls, domain){
