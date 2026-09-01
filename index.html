@@ -171,7 +171,7 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
 #dh-inspect{width:5px;flex-shrink:0;cursor:col-resize;background:var(--border);transition:background .15s}
 #dh-inspect:hover{background:var(--signal-dim)}
 .hc-hint{font-size:10px;color:var(--signal-dim);margin-top:6px;font-family:var(--sans);border-top:1px solid var(--border);padding-top:5px}
-.atomic-card{padding:10px 14px;overflow-x:hidden;word-break:break-word}
+.atomic-card{padding:10px 14px}
 .atomic-header{background:#0f1520;padding:8px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
 .atomic-tag{font-size:12px;font-weight:700;font-family:var(--mono);color:var(--signal)}
 .atomic-sub{font-size:10px;color:var(--text-dim);font-family:var(--mono)}
@@ -181,11 +181,6 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
 .atomic-footer{font-size:10px;color:var(--text-dim);font-family:var(--sans);padding:5px 14px;background:#0a0c15;border-top:1px solid var(--border);font-style:italic}
 .atomic-locator{background:#060810;border-top:1px solid var(--border2);padding:8px 14px}
 .atomic-locator-label{font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);font-family:var(--mono);margin-bottom:5px}
-.atomic-breadcrumb{display:flex;align-items:center;flex-wrap:wrap;gap:3px;margin-bottom:7px}
-.atomic-bc-item{font-size:10px;font-family:var(--mono);padding:2px 6px;border-radius:2px;white-space:nowrap}
-.atomic-bc-item.bc-ancestor{background:rgba(30,30,60,0.8);color:var(--text-dim);border:1px solid var(--border)}
-.atomic-bc-item.bc-current{background:rgba(0,229,204,0.15);color:var(--signal);border:1px solid var(--signal-dim);font-weight:700}
-.atomic-bc-sep{color:var(--border2);font-size:10px}
 .atomic-find-btn{width:100%;padding:5px;background:rgba(0,229,204,0.08);border:1px solid var(--signal-dim);color:var(--signal);font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:1px;cursor:pointer;text-align:center;transition:all .15s;margin-top:4px;display:block}
 .atomic-find-btn:hover{background:rgba(0,229,204,0.18);border-color:var(--signal)}
 .content-viewer{background:#050710;border-top:1px solid var(--border2);padding:8px 12px;max-height:160px;overflow-y:auto}
@@ -714,9 +709,7 @@ function showPreviewHoverCard(info){
 
   // Build card HTML
   var html='';
-  html+='<div style="font-size:11px;font-weight:700;color:var(--signal);font-family:var(--mono);margin-bottom:6px">'
-    +'&lt;'+tag+'&gt;'+(idStr?'<span style="color:var(--amber)"> '+idStr+'</span>':'')
-    +(classes.length?'<span style="color:var(--purple)"> .'+classes[0]+'</span>':'')+'</div>';
+  html+='<div style="font-size:11px;font-weight:700;color:var(--signal);font-family:var(--mono);margin-bottom:6px">&lt;'+tag+'&gt;</div>';
 
   html+='<div style="font-size:11px;color:var(--text-bright);font-family:var(--sans);margin-bottom:8px;line-height:1.5">'+whatIsIt+'</div>';
 
@@ -850,17 +843,6 @@ function atomicCard(header, sections, footer, node){
     var idx = allElements.indexOf(node);
     html += '<div class="atomic-locator">';
     html += '<div class="atomic-locator-label">WHERE IS IT IN THE PAGE</div>';
-    html += '<div class="atomic-breadcrumb">';
-    var shown = ancestors.length > 3 ? ancestors.slice(-3) : ancestors;
-    if(ancestors.length > 3) html += '<span class="atomic-bc-item bc-ancestor" style="color:var(--border2)">…</span><span class="atomic-bc-sep">›</span>';
-    shown.forEach(function(a){
-      html += '<span class="atomic-bc-item bc-ancestor">&lt;'+a.tag+'&gt;'+(a.id?'<span style="color:var(--amber)">#'+a.id+'</span>':a.cls?'<span style="color:var(--purple)">.'+ a.cls+'</span>':'')+'</span><span class="atomic-bc-sep">›</span>';
-    });
-    var curTag = node.tagName.toLowerCase();
-    var curId = node.id ? '#'+node.id : '';
-    var curCls = node.className && typeof node.className==='string' && node.className.trim() ? '.'+node.className.trim().split(/\s+/)[0] : '';
-    html += '<span class="atomic-bc-item bc-current">&lt;'+curTag+'&gt;'+(curId?'<span style="color:var(--amber)">'+escHtml(curId)+'</span>':'')+(curCls?'<span style="color:var(--purple)">'+escHtml(curCls)+'</span>':'')+'</span>';
-    html += '</div>';
     // Source line locator
     var srcLine = findSourceLine(node);
     if(srcLine > 0){
@@ -1319,7 +1301,7 @@ function getTagAtomic(node){
   if(text && tag !== 'script' && tag !== 'style') extraWhat.push('Contains: "' + text + (text.length === 60 ? '…' : '') + '"');
 
   return {
-    header: { tag: '&lt;' + tag + '&gt;' + (id ? ' <span style="color:var(--amber)">#'+id+'</span>' : '') + (classes.length ? ' <span style="color:var(--purple)">.'+ classes[0]+'</span>' : ''), sub: parent !== 'none' ? 'inside <'+parent+'>' : '' },
+    header: { tag: '&lt;' + tag + '&gt;', sub: (id ? '#'+id : '') + (classes.length ? ' .'+classes[0] : '') + (parent !== 'none' ? ' inside &lt;'+parent+'&gt;' : '') },
     sections: [
       { label: 'WHAT IS IT', color: 'var(--signal)', lines: [escHtml(d.what)].concat(extraWhat.map(escHtml)) },
       { label: 'WHY IS IT HERE', color: 'var(--purple)', lines: [escHtml(d.why)] },
