@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>FORENSICODE — Forensic HTML Inspector</title>
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -426,7 +425,10 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--text);f
       <button onclick="closeNetMap()" style="padding:4px 12px;background:transparent;border:1px solid var(--alert-dim);color:var(--alert);font-family:var(--mono);font-size:11px;cursor:pointer;margin-left:8px">✕ CLOSE</button>
     </div>
   </div>
-  <canvas id="net-canvas" style="flex:1;display:block;width:100%;cursor:grab"></canvas>
+  <div style="position:relative;flex:1;overflow:hidden;display:flex">
+    <canvas id="net-canvas" style="flex:1;display:block;cursor:grab"></canvas>
+    <div id="net-info-panel" style="position:absolute;top:0;right:0;width:320px;height:100%;overflow-y:auto;overflow-x:hidden;background:rgba(7,9,15,0.97);border-left:1px solid var(--border2);display:none;z-index:10;box-sizing:border-box"></div>
+  </div>
 </div>
 <div id="statusbar">
   <div class="status-dot" id="status-dot"></div>
@@ -1026,7 +1028,7 @@ function buildMiniSource(node){
   var end = Math.min(_sourceLines.length - 1, lineNum - 1 + CONTEXT);
   var html = '<div style="background:#03030a;border-top:1px solid var(--border2);padding:8px 0">';
   html += '<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--text-dim);font-family:var(--mono);padding:0 12px 5px">IN YOUR HTML — LINE '+lineNum+'</div>';
-  html += '<div style="overflow-x:auto;max-width:100%">';
+  html += '<div style="overflow-x:auto;max-width:100%;contain:paint">';
   for(var i = start; i <= end; i++){
     var isTarget = (i === lineNum - 1);
     var lineText = _sourceLines[i] || '';
@@ -3723,7 +3725,7 @@ function bindNetEvents(){
     var node=getNetNodeAt(e);
     if(node!==netHoverNode){
       netHoverNode=node;
-      // hover removed
+      if(node&&!netIsolatedNode) showNetHoverCard(e,node);
     }
   });
 
@@ -3882,13 +3884,13 @@ function showNetHoverCard(e,node){
     sections,null,null
   );
 
-  // Append mini source browser — find WHERE in the HTML this connection is defined
-  if(node.id!=='page'){
-    var urlsToFind=node.urls&&node.urls.length?node.urls:[node.url||''];
-    html+=buildMiniSourceFromUrls(urlsToFind,node.domain||'');
+  var netPanel=document.getElementById('net-info-panel');
+  if(netPanel&&document.getElementById('net-pane').style.display==='flex'){
+    netPanel.style.display='block';
+    netPanel.innerHTML=html;
+  } else {
+    showInspectPane(html);
   }
-
-  showInspectPane(html);
 }
 
 function buildMiniSourceFromUrls(urls, domain){
@@ -3930,7 +3932,7 @@ function buildMiniSourceFromUrls(urls, domain){
   var end=Math.min(_sourceLines.length-1,bestLine-1+CONTEXT);
   var html='<div style="background:#02020a;border-top:2px solid var(--signal-dim);padding:8px 0">';
   html+='<div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--signal-dim);font-family:var(--mono);padding:0 12px 5px">IN YOUR HTML \u2014 LINE '+bestLine+'</div>';
-  html+='<div style="overflow-x:auto">';
+  html+='<div style="overflow-x:auto;contain:paint">';
   for(var i=start;i<=end;i++){
     var isTarget=(i===bestLine-1);
     var lineText=_sourceLines[i]||'';
